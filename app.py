@@ -43,16 +43,21 @@ def analyze_midi():
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500  # Manejo de errores
-
 @app.route('/upload-midi', methods=['POST'])
 def upload_midi():
     if 'file' not in request.files:
         return jsonify({'error': 'No file uploaded'}), 400
 
+    file = request.files['file']
+
     try:
-        # Subir archivo MIDI a Cloudinary
-        result = cloudinary.uploader.upload_large(request.files['file'], resource_type="raw")
-        return jsonify({'url': result['secure_url']})  # Devuelve la URL del archivo subido
+        # Usar FileStorage directamente sin context manager
+        if file:
+            # Guarda temporalmente el archivo en el servidor local
+            file.save(f"uploaded_{file.filename}")
+            return jsonify({'message': 'File uploaded successfully', 'filename': file.filename}), 200
+        else:
+            return jsonify({'error': 'No file content'}), 400
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
