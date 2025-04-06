@@ -42,7 +42,9 @@ def analyze_midi():
             'measures': len(score.parts[0].getElementsByClass('Measure')) if score.parts else 'Unknown'
         })
     except Exception as e:
-        return jsonify({'error': str(e)}), 500  # Manejo de errores
+        print(f"Error al analizar MIDI: {str(e)}")  # Imprimir el error para ver más detalles
+        return jsonify({'error': 'Error en el análisis MIDI. Ver consola para detalles.'}), 500
+
 @app.route('/upload-midi', methods=['POST'])
 def upload_midi():
     if 'file' not in request.files:
