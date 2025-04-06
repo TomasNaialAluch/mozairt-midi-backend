@@ -3,10 +3,9 @@ import cloudinary
 import cloudinary.uploader
 from music21 import converter, tempo, key, meter, environment
 from flask_cors import CORS, cross_origin
+import os
 
 app = Flask(__name__)
-
-# Habilitar CORS para todas las rutas (esto permite solicitudes desde cualquier origen)
 CORS(app)
 
 # Configuración de Cloudinary
@@ -16,40 +15,33 @@ cloudinary.config(
     api_secret='Y9HKvWqnjTlUDmbH-xeXNW5uvBE'
 )
 
-# Configuración de music21: Desactivar warnings para mayor claridad en la consola
+# Configuración de music21
 env = environment.UserSettings()
 env['warnings'] = 0
 
 @app.route('/analyze', methods=['POST'])
-@cross_origin()  # Permite CORS para este endpoint (opcional, ya que CORS(app) lo habilita para todo)
+@cross_origin()
 def analyze_midi():
     if 'file' not in request.files:
         return jsonify({'error': 'No file uploaded'}), 400
 
     midi_file = request.files['file']
     try:
-        # Parsear el archivo MIDI usando music21
         score = converter.parse(midi_file)
-        
-        # Analizar la tonalidad utilizando el algoritmo Krumhansl-Schmuckler
         key_estimated = score.analyze('key')
-        
-        # Calcular BPM a partir de MetronomeMark (si está disponible)
-        bpm = 120  # Valor por defecto
+
+        bpm = 120
         tempos = score.flat.getElementsByClass(tempo.MetronomeMark)
         if tempos:
             bpm = tempos[0].number
 
-        # Calcular la firma de tiempo (Time Signature)
         ts = score.recurse().getElementsByClass(meter.TimeSignature)
         time_signature = str(ts[0]) if ts else 'Unknown'
 
-        # Obtener la cantidad de compases (asegúrate de que el score tenga parts)
         measures = 'Unknown'
         if score.parts:
             measures = len(score.parts[0].getElementsByClass('Measure'))
 
-        # Retornar los datos extraídos en formato JSON
         return jsonify({
             'bpm': bpm,
             'key': f"{key_estimated.tonic} {key_estimated.mode}",
@@ -57,7 +49,6 @@ def analyze_midi():
             'measures': measures
         })
     except Exception as e:
-        # Imprimir el error completo para facilitar la depuración
         print(f"Error al analizar MIDI: {str(e)}")
         return jsonify({'error': 'Error en el análisis MIDI. Revisa la consola para más detalles.'}), 500
 
@@ -68,10 +59,8 @@ def upload_midi():
         return jsonify({'error': 'No file uploaded'}), 400
 
     file = request.files['file']
-
     try:
         if file:
-            # Guarda temporalmente el archivo en el servidor local (opcional)
             file.save(f"uploaded_{file.filename}")
             return jsonify({'message': 'File uploaded successfully', 'filename': file.filename}), 200
         else:
@@ -80,4 +69,5 @@ def upload_midi():
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
