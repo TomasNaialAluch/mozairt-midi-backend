@@ -2,8 +2,10 @@ from flask import Flask, request, jsonify
 import cloudinary
 import cloudinary.uploader
 from music21 import converter, tempo, key, meter, environment
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)  # Esto habilita CORS para todas las rutas
 
 # Configuración de Cloudinary
 cloudinary.config(
