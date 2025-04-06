@@ -1,2 +1,4 @@
 Flask==2.3.2
+flask-cors==5.0.1
+cloudinary==1.27.0
 music21==6.1.0
