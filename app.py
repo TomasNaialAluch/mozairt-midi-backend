@@ -1,55 +1,50 @@
+import cloudinary
+import cloudinary.uploader
 from flask import Flask, request, jsonify
-from music21 import converter, tempo, meter, key, note, chord
-import tempfile
+from music21 import converter, tempo, key, meter
 
 app = Flask(__name__)
 
-@app.route("/", methods=["GET"])
-def ping():
-    return "MozAIrt backend funcionando 🎵"
+# Configuración de Cloudinary
+cloudinary.config(
+    cloud_name='dnj7o6fdq',
+    api_key='5645396388878616',
+    api_secret='Y9HKvWqnjTlUDmbH-xeXNW5uvBE'
+)
 
-@app.route("/analizar-midi", methods=["POST"])
-def analizar_midi():
+@app.route('/analyze', methods=['POST'])
+def analyze_midi():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file uploaded'}), 400
+
+    midi_file = request.files['file']
     try:
-        if 'file' not in request.files:
-            return jsonify({"error": "No se envió archivo"}), 400
+        score = converter.parse(midi_file)
+        bpm = 120
 
-        file = request.files['file']
+        tempos = score.flat.getElementsByClass(tempo.MetronomeMark)
+        if tempos:
+            bpm = tempos[0].number
 
-        # Guardar archivo temporal
-        with tempfile.NamedTemporaryFile(delete=True) as tmp:
-            file.save(tmp.name)
-            midi = converter.parse(tmp.name)
-
-        # Análisis básico
-        bpm = None
-        ts = None
-        tonalidad = None
-        total_notas = 0
-
-        # Tempo
-        for el in midi.recurse().getElementsByClass(tempo.MetronomeMark):
-            bpm = int(el.number)
-            break
-
-        # Compás
-        ts_el = midi.recurse().getElementsByClass(meter.TimeSignature)
-        ts = str(ts_el[0].ratioString) if ts_el else None
-
-        # Tonalidad
-        tonalidad = str(midi.analyze("key"))
-
-        # Conteo de notas
-        for n in midi.recurse().notes:
-            if isinstance(n, (note.Note, chord.Chord)):
-                total_notas += 1
+        keys = score.analyze('key')
+        ts = score.recurse().getElementsByClass(meter.TimeSignature)
 
         return jsonify({
-            "bpm": bpm,
-            "compas": ts,
-            "tonalidad": tonalidad,
-            "notas_totales": total_notas
+            'bpm': bpm,
+            'key': str(keys),
+            'time_signature': str(ts[0]) if ts else 'Unknown',
+            'measures': len(score.parts[0].getElementsByClass('Measure')) if score.parts else 'Unknown'
         })
-
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/upload-midi', methods=['POST'])
+def upload_midi():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file uploaded'}), 400
+
+    try:
+        result = cloudinary.uploader.upload_large(request.files['file'], resource_type="raw")
+        return jsonify({'url': result['secure_url']})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
