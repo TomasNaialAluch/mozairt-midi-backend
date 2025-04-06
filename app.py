@@ -2,10 +2,12 @@ from flask import Flask, request, jsonify
 import cloudinary
 import cloudinary.uploader
 from music21 import converter, tempo, key, meter, environment
-from flask_cors import CORS
+from flask_cors import CORS, cross_origin
 
 app = Flask(__name__)
-CORS(app)  # Esto habilita CORS para todas las rutas
+
+# Habilitar CORS para todas las rutas (esto permite solicitudes desde cualquier origen)
+CORS(app)
 
 # Configuración de Cloudinary
 cloudinary.config(
@@ -14,11 +16,12 @@ cloudinary.config(
     api_secret='Y9HKvWqnjTlUDmbH-xeXNW5uvBE'
 )
 
-# Opcional: Configurar logging de music21 para ver detalles en la consola
+# Configuración de music21: Desactivar warnings para mayor claridad en la consola
 env = environment.UserSettings()
 env['warnings'] = 0
 
 @app.route('/analyze', methods=['POST'])
+@cross_origin()  # Permite CORS para este endpoint (opcional, ya que CORS(app) lo habilita para todo)
 def analyze_midi():
     if 'file' not in request.files:
         return jsonify({'error': 'No file uploaded'}), 400
@@ -37,7 +40,7 @@ def analyze_midi():
         if tempos:
             bpm = tempos[0].number
 
-        # Calcular Time Signature
+        # Calcular la firma de tiempo (Time Signature)
         ts = score.recurse().getElementsByClass(meter.TimeSignature)
         time_signature = str(ts[0]) if ts else 'Unknown'
 
@@ -46,7 +49,7 @@ def analyze_midi():
         if score.parts:
             measures = len(score.parts[0].getElementsByClass('Measure'))
 
-        # Retornar los datos extraídos
+        # Retornar los datos extraídos en formato JSON
         return jsonify({
             'bpm': bpm,
             'key': f"{key_estimated.tonic} {key_estimated.mode}",
@@ -59,6 +62,7 @@ def analyze_midi():
         return jsonify({'error': 'Error en el análisis MIDI. Revisa la consola para más detalles.'}), 500
 
 @app.route('/upload-midi', methods=['POST'])
+@cross_origin()
 def upload_midi():
     if 'file' not in request.files:
         return jsonify({'error': 'No file uploaded'}), 400
