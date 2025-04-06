@@ -1,30 +1,55 @@
 from flask import Flask, request, jsonify
-from music21 import converter, tempo, key, meter
+from music21 import converter, tempo, meter, key, note, chord
+import tempfile
 
 app = Flask(__name__)
 
-@app.route('/analyze', methods=['POST'])
-def analyze_midi():
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file uploaded'}), 400
+@app.route("/", methods=["GET"])
+def ping():
+    return "MozAIrt backend funcionando 🎵"
 
-    midi_file = request.files['file']
+@app.route("/analizar-midi", methods=["POST"])
+def analizar_midi():
     try:
-        score = converter.parse(midi_file)
-        bpm = 120  # Default
+        if 'file' not in request.files:
+            return jsonify({"error": "No se envió archivo"}), 400
 
-        tempos = score.flat.getElementsByClass(tempo.MetronomeMark)
-        if tempos:
-            bpm = tempos[0].number
+        file = request.files['file']
 
-        keys = score.analyze('key')
-        ts = score.recurse().getElementsByClass(meter.TimeSignature)
+        # Guardar archivo temporal
+        with tempfile.NamedTemporaryFile(delete=True) as tmp:
+            file.save(tmp.name)
+            midi = converter.parse(tmp.name)
+
+        # Análisis básico
+        bpm = None
+        ts = None
+        tonalidad = None
+        total_notas = 0
+
+        # Tempo
+        for el in midi.recurse().getElementsByClass(tempo.MetronomeMark):
+            bpm = int(el.number)
+            break
+
+        # Compás
+        ts_el = midi.recurse().getElementsByClass(meter.TimeSignature)
+        ts = str(ts_el[0].ratioString) if ts_el else None
+
+        # Tonalidad
+        tonalidad = str(midi.analyze("key"))
+
+        # Conteo de notas
+        for n in midi.recurse().notes:
+            if isinstance(n, (note.Note, chord.Chord)):
+                total_notas += 1
 
         return jsonify({
-            'bpm': bpm,
-            'key': str(keys),
-            'time_signature': str(ts[0]) if ts else 'Unknown',
-            'measures': len(score.parts[0].getElementsByClass('Measure')) if score.parts else 'Unknown'
+            "bpm": bpm,
+            "compas": ts,
+            "tonalidad": tonalidad,
+            "notas_totales": total_notas
         })
+
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({"error": str(e)}), 500
