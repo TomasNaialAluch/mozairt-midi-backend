@@ -1,4 +1,6 @@
 from flask import Flask, request, jsonify
+import traceback
+
 import cloudinary
 import cloudinary.uploader
 from music21 import converter, tempo, key, meter, environment, chord, note, pitch
