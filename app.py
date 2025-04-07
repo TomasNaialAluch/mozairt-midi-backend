@@ -64,7 +64,7 @@ def analyze_midi():
 
     try:
         # Usar análisis más robusto de music21
-      score = converter.parse(midi_file)  # ✅ Esto es lo correcto
+        score = converter.parse(midi_file)
 
         
         # Análisis de tonalidad mejorado
