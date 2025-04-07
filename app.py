@@ -4,6 +4,7 @@ import cloudinary.uploader
 from music21 import converter, tempo, key, meter, environment
 from flask_cors import CORS, cross_origin
 import os
+import traceback
 
 app = Flask(__name__)
 CORS(app)
@@ -27,6 +28,11 @@ def analyze_midi():
 
     midi_file = request.files['file']
     try:
+        # Validar extensión del archivo
+        if not midi_file.filename.lower().endswith(('.mid', '.midi')):
+            return jsonify({'error': 'Invalid file type. Only .mid or .midi files are allowed.'}), 400
+
+        # Analizar el archivo MIDI
         score = converter.parse(midi_file)
         key_estimated = score.analyze('key')
 
@@ -60,13 +66,38 @@ def upload_midi():
 
     file = request.files['file']
     try:
-        if file:
-            file.save(f"uploaded_{file.filename}")
-            return jsonify({'message': 'File uploaded successfully', 'filename': file.filename}), 200
-        else:
-            return jsonify({'error': 'No file content'}), 400
+        # Validar extensión del archivo
+        if not file.filename.lower().endswith(('.mid', '.midi')):
+            return jsonify({'error': 'Invalid file type. Only .mid or .midi files are allowed.'}), 400
+
+        # Guardar el archivo temporalmente
+        temp_filepath = f"uploaded_{file.filename}"
+        file.save(temp_filepath)
+
+        # Subir el archivo a Cloudinary
+        upload_result = cloudinary.uploader.upload(
+            temp_filepath,
+            resource_type="raw",
+            public_id=f"midi/{file.filename}",
+            overwrite=True
+        )
+
+        # Eliminar el archivo temporal
+        os.remove(temp_filepath)
+
+        # Devolver la URL del archivo subido
+        return jsonify({
+            'message': 'File uploaded successfully',
+            'filename': file.filename,
+            'url': upload_result.get('secure_url')
+        }), 200
+
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        import traceback
+        return jsonify({
+            "error": str(e),
+            "trace": traceback.format_exc()
+        }), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
