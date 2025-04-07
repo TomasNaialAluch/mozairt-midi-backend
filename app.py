@@ -1,10 +1,11 @@
 from flask import Flask, request, jsonify
 import cloudinary
 import cloudinary.uploader
-from music21 import converter, tempo, key, meter, environment, chord
+from music21 import converter, tempo, key, meter, environment, chord, note, pitch
 from flask_cors import CORS
 import os
 import logging
+import traceback  # Importación faltante para traceback
 from werkzeug.utils import secure_filename
 
 # Configuración básica de logging
