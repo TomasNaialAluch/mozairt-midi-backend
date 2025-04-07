@@ -64,7 +64,8 @@ def analyze_midi():
 
     try:
         # Usar análisis más robusto de music21
-        score = converter.parse(midi_file.stream)
+      score = converter.parse(midi_file)  # ✅ Esto es lo correcto
+
         
         # Análisis de tonalidad mejorado
         key_analysis = score.analyze('key.krumhansl')
