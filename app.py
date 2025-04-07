@@ -64,7 +64,15 @@ def analyze_midi():
 
     try:
         # Usar análisis más robusto de music21
-        score = converter.parse(midi_file)
+        from tempfile import NamedTemporaryFile
+
+        with NamedTemporaryFile(delete=False, suffix=".mid") as temp_midi:
+            midi_file.save(temp_midi)
+            temp_midi_path = temp_midi.name
+
+        score = converter.parse(temp_midi_path)
+        os.remove(temp_midi_path)
+
 
         
         # Análisis de tonalidad mejorado
